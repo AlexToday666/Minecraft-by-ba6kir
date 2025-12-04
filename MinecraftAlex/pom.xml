@@ -12,7 +12,7 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <jme.version>3.6.1-stable</jme.version>
+        <jme.version>3.3.2-stable</jme.version>
     </properties>
 
     <dependencies>
@@ -36,7 +36,6 @@
         </dependency>
 
         <!-- Опционально: физика (Bullet) -->
-        <!--
         <dependency>
             <groupId>org.jmonkeyengine</groupId>
             <artifactId>jme3-bullet</artifactId>
@@ -47,7 +46,6 @@
             <artifactId>jme3-bullet-native</artifactId>
             <version>${jme.version}</version>
         </dependency>
-        -->
     </dependencies>
 
     <build>
