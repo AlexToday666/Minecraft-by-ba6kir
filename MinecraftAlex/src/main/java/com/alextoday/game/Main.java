@@ -15,6 +15,8 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.system.AppSettings;
+import com.alextoday.game.world.Chunk;
+
 
 public class Main extends SimpleApplication implements ActionListener {
 
@@ -26,7 +28,9 @@ public class Main extends SimpleApplication implements ActionListener {
     private boolean backward;
     private boolean left;
     private boolean right;
-    private static final int SPAWN_SIZE = 20;
+    private static final int CHUNKS_X = 5;
+    private static final int CHUNKS_Z = 5;
+
 
     public static void main(String[] args) {
         Main app = new Main();
@@ -95,12 +99,18 @@ public class Main extends SimpleApplication implements ActionListener {
 
     private void initWorld() {
         world = new World(rootNode, assetManager);
-        world.generateSpawnArea(SPAWN_SIZE);
+        world.generateChunkGrid(CHUNKS_X, CHUNKS_Z);
+
+        float worldSizeX = Chunk.SIZE_X * CHUNKS_X;
+        float worldSizeZ = Chunk.SIZE_Z * CHUNKS_Z;
+
+        float groundHeight = 3f;
 
         BoxCollisionShape groundShape =
-                new BoxCollisionShape(new Vector3f(SPAWN_SIZE / 2f, 0.5f, SPAWN_SIZE / 2f));
+                new BoxCollisionShape(new Vector3f(worldSizeX / 2f, groundHeight / 2f, worldSizeZ / 2f));
         RigidBodyControl ground = new RigidBodyControl(groundShape, 0);
-        ground.setPhysicsLocation(new Vector3f(SPAWN_SIZE / 2f, -0.5f, SPAWN_SIZE / 2f));
+        ground.setPhysicsLocation(new Vector3f(worldSizeX / 2f, groundHeight / 2f, worldSizeZ / 2f));
+
         bulletAppState.getPhysicsSpace().add(ground);
     }
 
@@ -110,7 +120,12 @@ public class Main extends SimpleApplication implements ActionListener {
         player.setJumpSpeed(20f);
         player.setFallSpeed(30f);
         player.setGravity(30f);
-        player.setPhysicsLocation(new Vector3f(SPAWN_SIZE / 2f, 5f, SPAWN_SIZE / 2f));
+
+        float worldSizeX = Chunk.SIZE_X * CHUNKS_X;
+        float worldSizeZ = Chunk.SIZE_Z * CHUNKS_Z;
+
+        player.setPhysicsLocation(new Vector3f(worldSizeX / 2f, 5f, worldSizeZ / 2f));
+
         bulletAppState.getPhysicsSpace().add(player);
     }
 
