@@ -3,3 +3,4 @@ com/alextoday/game/world/Block.class
 com/alextoday/game/world/World.class
 com/alextoday/game/Main.class
 com/alextoday/game/world/Chunk.class
+com/alextoday/game/world/PerlinNoise.class

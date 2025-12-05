@@ -1,5 +1,6 @@
 package com.alextoday.game.world;
 
+import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.material.Material;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -18,6 +19,8 @@ public class Chunk {
 
     private final BlockType[][][] blocks;
     private final Node node;
+
+    private RigidBodyControl terrainBody;
 
     public Chunk(int chunkX, int chunkZ) {
         this.chunkX = chunkX;
@@ -54,6 +57,36 @@ public class Chunk {
                         blocks[x][y][z] = BlockType.DIRT;
                     } else {
                         blocks[x][y][z] = BlockType.STONE;
+                    }
+                }
+            }
+        }
+    }
+
+    public void generateTerrainWithNoise(PerlinNoise noise,
+                                         int baseHeight,
+                                         int amplitude) {
+        for (int x = 0; x < SIZE_X; x++) {
+            for (int z = 0; z < SIZE_Z; z++) {
+
+                int worldX = chunkX * SIZE_X + x;
+                int worldZ = chunkZ * SIZE_Z + z;
+
+                double scale = 0.05;
+                double n = noise.noise(worldX * scale, worldZ * scale); // [-1, 1]
+
+                int height = (int) Math.round(baseHeight + n * amplitude);
+
+                if (height < 1) height = 1;
+                if (height > SIZE_Y) height = SIZE_Y;
+
+                for (int y = 0; y < height; y++) {
+                    if (y == height - 1) {
+                        setBlock(x, y, z, BlockType.GRASS);
+                    } else if (y >= height - 3) {
+                        setBlock(x, y, z, BlockType.DIRT);
+                    } else {
+                        setBlock(x, y, z, BlockType.STONE);
                     }
                 }
             }
@@ -123,5 +156,13 @@ public class Chunk {
 
     public int getChunkZ() {
         return chunkZ;
+    }
+
+    public RigidBodyControl getTerrainBody() {
+        return terrainBody;
+    }
+
+    public void setTerrainBody(RigidBodyControl terrainBody) {
+        this.terrainBody = terrainBody;
     }
 }

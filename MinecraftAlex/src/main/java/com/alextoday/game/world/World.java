@@ -1,6 +1,10 @@
 package com.alextoday.game.world;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.bullet.PhysicsSpace;
+import com.jme3.bullet.collision.shapes.CollisionShape;
+import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.bullet.util.CollisionShapeFactory;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.scene.Node;
@@ -21,11 +25,18 @@ public class World {
 
     private final Map<String, Chunk> chunks = new HashMap<>();
 
-    public World(Node rootNode, AssetManager assetManager) {
+    private final PerlinNoise heightNoise;
+    private final PhysicsSpace physicsSpace;
+
+    public World(Node rootNode, AssetManager assetManager, PhysicsSpace physicsSpace) {
         this.rootNode = rootNode;
         this.assetManager = assetManager;
         this.materials = new EnumMap<>(BlockType.class);
         this.cubeMesh = new Box(0.5f, 0.5f, 0.5f);
+
+        this.heightNoise = new PerlinNoise(12345L);
+        this.physicsSpace = physicsSpace;
+
         initMaterials();
     }
 
@@ -46,6 +57,22 @@ public class World {
             materials.put(type, mat);
         }
     }
+
+    public int getTerrainHeightAt(float worldX, float worldZ) {
+        double scale = 0.05;
+        double n = heightNoise.noise(worldX * scale, worldZ * scale);
+
+        int baseHeight = 8;
+        int amplitude = 6;
+
+        int height = (int) Math.round(baseHeight + n * amplitude);
+
+        if (height < 1) height = 1;
+        if (height > Chunk.SIZE_Y) height = Chunk.SIZE_Y;
+
+        return height;
+    }
+
 
     private String chunkKey(int cx, int cz) {
         return cx + "," + cz;
@@ -71,8 +98,17 @@ public class World {
                 }
 
                 Chunk chunk = new Chunk(cx, cz);
-                chunk.generateFlat(3);
+
+                chunk.generateTerrainWithNoise(heightNoise, 4, 2);
+
                 chunk.buildGeometry(rootNode, cubeMesh, materials);
+
+                CollisionShape shape = CollisionShapeFactory.createMeshShape(chunk.getNode());
+                RigidBodyControl terrainBody = new RigidBodyControl(shape, 0);
+                chunk.getNode().addControl(terrainBody);
+                physicsSpace.add(terrainBody);
+                chunk.setTerrainBody(terrainBody);
+
                 chunks.put(key, chunk);
             }
         }
@@ -94,6 +130,13 @@ public class World {
             int dz = Math.abs(cz - centerCz);
 
             if (dx > radiusChunks || dz > radiusChunks) {
+                // снимаем физику
+                RigidBodyControl body = chunk.getTerrainBody();
+                if (body != null) {
+                    physicsSpace.remove(body);
+                    chunk.getNode().removeControl(body);
+                }
+
                 chunk.getNode().removeFromParent();
                 it.remove();
             }

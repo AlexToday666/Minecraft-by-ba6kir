@@ -100,7 +100,7 @@ public class Main extends SimpleApplication implements ActionListener {
     }
 
     private void initWorld() {
-        world = new World(rootNode, assetManager);
+        world = new World(rootNode, assetManager, bulletAppState.getPhysicsSpace());
 
         BoxCollisionShape groundShape =
                 new BoxCollisionShape(new Vector3f(GROUND_HALF_SIZE, GROUND_HEIGHT / 2f, GROUND_HALF_SIZE));
@@ -118,7 +118,10 @@ public class Main extends SimpleApplication implements ActionListener {
         player.setFallSpeed(30f);
         player.setGravity(30f);
 
-        player.setPhysicsLocation(new Vector3f(0f, GROUND_HEIGHT + 2f, 0f));
+        int terrainY = world.getTerrainHeightAt(0f, 0f);
+
+        player.setPhysicsLocation(new Vector3f(0f, terrainY + 3f, 0f));
+
         bulletAppState.getPhysicsSpace().add(player);
     }
 
