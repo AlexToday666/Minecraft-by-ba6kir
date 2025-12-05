@@ -15,8 +15,6 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.system.AppSettings;
-import com.alextoday.game.world.Chunk;
-
 
 public class Main extends SimpleApplication implements ActionListener {
 
@@ -28,9 +26,10 @@ public class Main extends SimpleApplication implements ActionListener {
     private boolean backward;
     private boolean left;
     private boolean right;
-    private static final int CHUNKS_X = 5;
-    private static final int CHUNKS_Z = 5;
 
+    private static final int VIEW_RADIUS_CHUNKS = 2;
+    private static final float GROUND_HALF_SIZE = 256f;
+    private static final float GROUND_HEIGHT = 3f;
 
     public static void main(String[] args) {
         Main app = new Main();
@@ -73,6 +72,9 @@ public class Main extends SimpleApplication implements ActionListener {
 
         player.setWalkDirection(walkDirection.mult(0.5f));
         cam.setLocation(player.getPhysicsLocation().add(0, 1.6f, 0));
+
+        Vector3f pos = player.getPhysicsLocation();
+        world.updateVisibleChunks(pos.x, pos.z, VIEW_RADIUS_CHUNKS);
     }
 
     private void initPhysics() {
@@ -99,19 +101,14 @@ public class Main extends SimpleApplication implements ActionListener {
 
     private void initWorld() {
         world = new World(rootNode, assetManager);
-        world.generateChunkGrid(CHUNKS_X, CHUNKS_Z);
-
-        float worldSizeX = Chunk.SIZE_X * CHUNKS_X;
-        float worldSizeZ = Chunk.SIZE_Z * CHUNKS_Z;
-
-        float groundHeight = 3f;
 
         BoxCollisionShape groundShape =
-                new BoxCollisionShape(new Vector3f(worldSizeX / 2f, groundHeight / 2f, worldSizeZ / 2f));
+                new BoxCollisionShape(new Vector3f(GROUND_HALF_SIZE, GROUND_HEIGHT / 2f, GROUND_HALF_SIZE));
         RigidBodyControl ground = new RigidBodyControl(groundShape, 0);
-        ground.setPhysicsLocation(new Vector3f(worldSizeX / 2f, groundHeight / 2f, worldSizeZ / 2f));
-
+        ground.setPhysicsLocation(new Vector3f(0, GROUND_HEIGHT / 2f, 0));
         bulletAppState.getPhysicsSpace().add(ground);
+
+        world.updateVisibleChunks(0f, 0f, VIEW_RADIUS_CHUNKS);
     }
 
     private void initPlayer() {
@@ -121,11 +118,7 @@ public class Main extends SimpleApplication implements ActionListener {
         player.setFallSpeed(30f);
         player.setGravity(30f);
 
-        float worldSizeX = Chunk.SIZE_X * CHUNKS_X;
-        float worldSizeZ = Chunk.SIZE_Z * CHUNKS_Z;
-
-        player.setPhysicsLocation(new Vector3f(worldSizeX / 2f, 5f, worldSizeZ / 2f));
-
+        player.setPhysicsLocation(new Vector3f(0f, GROUND_HEIGHT + 2f, 0f));
         bulletAppState.getPhysicsSpace().add(player);
     }
 

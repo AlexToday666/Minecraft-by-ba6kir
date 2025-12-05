@@ -6,9 +6,9 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
 
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class World {
@@ -18,7 +18,8 @@ public class World {
 
     private final Map<BlockType, Material> materials;
     private final Box cubeMesh;
-    private final List<Chunk> chunks = new ArrayList<>();
+
+    private final Map<String, Chunk> chunks = new HashMap<>();
 
     public World(Node rootNode, AssetManager assetManager) {
         this.rootNode = rootNode;
@@ -46,45 +47,63 @@ public class World {
         }
     }
 
-    public void generateChunkGrid(int countX, int countZ) {
-        chunks.clear();
+    private String chunkKey(int cx, int cz) {
+        return cx + "," + cz;
+    }
 
-        for (int cx = 0; cx < countX; cx++) {
-            for (int cz = 0; cz < countZ; cz++) {
-                Chunk chunk = new Chunk(cx, cz);
+    public void updateVisibleChunks(float playerX, float playerZ, int radiusChunks) {
+        ensureChunksAround(playerX, playerZ, radiusChunks);
+        unloadFarChunks(playerX, playerZ, radiusChunks);
+    }
 
-                for (int x = 0; x < Chunk.SIZE_X; x++) {
-                    for (int z = 0; z < Chunk.SIZE_Z; z++) {
-                        int worldX = cx * Chunk.SIZE_X + x;
-                        int worldZ = cz * Chunk.SIZE_Z + z;
-                        int h = 2 + (int) (Math.sin(worldX * 0.3) + Math.cos(worldZ * 0.3));
-                        if (h < 1) h = 1;
-                        if (h > Chunk.SIZE_Y) h = Chunk.SIZE_Y;
-                        for (int y = 0; y < h; y++) {
-                            if (y == h - 1) {
-                                chunk.setBlock(x, y, z, BlockType.GRASS);
-                            } else if (y >= h - 3) {
-                                chunk.setBlock(x, y, z, BlockType.DIRT);
-                            } else {
-                                chunk.setBlock(x, y, z, BlockType.STONE);
-                            }
-                        }
-                    }
+    private void ensureChunksAround(float playerX, float playerZ, int radiusChunks) {
+        int centerCx = (int) Math.floor(playerX / Chunk.SIZE_X);
+        int centerCz = (int) Math.floor(playerZ / Chunk.SIZE_Z);
+
+        for (int dx = -radiusChunks; dx <= radiusChunks; dx++) {
+            for (int dz = -radiusChunks; dz <= radiusChunks; dz++) {
+                int cx = centerCx + dx;
+                int cz = centerCz + dz;
+
+                String key = chunkKey(cx, cz);
+                if (chunks.containsKey(key)) {
+                    continue;
                 }
 
-
+                Chunk chunk = new Chunk(cx, cz);
+                chunk.generateFlat(3);
                 chunk.buildGeometry(rootNode, cubeMesh, materials);
-                chunks.add(chunk);
+                chunks.put(key, chunk);
             }
         }
     }
 
+    private void unloadFarChunks(float playerX, float playerZ, int radiusChunks) {
+        int centerCx = (int) Math.floor(playerX / Chunk.SIZE_X);
+        int centerCz = (int) Math.floor(playerZ / Chunk.SIZE_Z);
 
-    public List<Chunk> getChunks() {
+        Iterator<Map.Entry<String, Chunk>> it = chunks.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Chunk> entry = it.next();
+            Chunk chunk = entry.getValue();
+
+            int cx = chunk.getChunkX();
+            int cz = chunk.getChunkZ();
+
+            int dx = Math.abs(cx - centerCx);
+            int dz = Math.abs(cz - centerCz);
+
+            if (dx > radiusChunks || dz > radiusChunks) {
+                chunk.getNode().removeFromParent();
+                it.remove();
+            }
+        }
+    }
+
+    public Map<String, Chunk> getChunks() {
         return chunks;
     }
 
     public void update(float tpf) {
-        // пока пусто
     }
 }

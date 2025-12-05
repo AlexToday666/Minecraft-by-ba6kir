@@ -1,6 +1,5 @@
 package com.alextoday.game.world;
 
-import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -18,11 +17,13 @@ public class Chunk {
     private final int chunkZ;
 
     private final BlockType[][][] blocks;
+    private final Node node;
 
     public Chunk(int chunkX, int chunkZ) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.blocks = new BlockType[SIZE_X][SIZE_Y][SIZE_Z];
+        this.node = new Node("chunk_" + chunkX + "_" + chunkZ);
         initAir();
     }
 
@@ -66,6 +67,8 @@ public class Chunk {
         int baseX = chunkX * SIZE_X;
         int baseZ = chunkZ * SIZE_Z;
 
+        node.detachAllChildren();
+
         for (int x = 0; x < SIZE_X; x++) {
             for (int y = 0; y < SIZE_Y; y++) {
                 for (int z = 0; z < SIZE_Z; z++) {
@@ -92,9 +95,13 @@ public class Chunk {
 
                     geom.setLocalTranslation(worldX, worldY, worldZ);
 
-                    rootNode.attachChild(geom);
+                    node.attachChild(geom);
                 }
             }
+        }
+
+        if (node.getParent() == null) {
+            rootNode.attachChild(node);
         }
     }
 
@@ -104,5 +111,17 @@ public class Chunk {
 
     public void setBlock(int x, int y, int z, BlockType type) {
         blocks[x][y][z] = type;
+    }
+
+    public Node getNode() {
+        return node;
+    }
+
+    public int getChunkX() {
+        return chunkX;
+    }
+
+    public int getChunkZ() {
+        return chunkZ;
     }
 }
