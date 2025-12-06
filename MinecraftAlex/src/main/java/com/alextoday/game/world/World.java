@@ -1,5 +1,7 @@
 package com.alextoday.game.world;
 
+import com.alextoday.game.world.BlockType;
+
 import com.jme3.asset.AssetManager;
 import com.jme3.bullet.PhysicsSpace;
 import com.jme3.bullet.collision.shapes.CollisionShape;
@@ -78,6 +80,17 @@ public class World {
         return cx + "," + cz;
     }
 
+    private Chunk getChunk(int cx, int cz) {
+        return chunks.get(chunkKey(cx, cz));
+    }
+
+    private Chunk getChunkByWorldCoords(int x, int z) {
+        int cx = Math.floorDiv(x, Chunk.SIZE_X);
+        int cz = Math.floorDiv(z, Chunk.SIZE_Z);
+        return getChunk(cx, cz);
+    }
+
+
     public void updateVisibleChunks(float playerX, float playerZ, int radiusChunks) {
         ensureChunksAround(playerX, playerZ, radiusChunks);
         unloadFarChunks(playerX, playerZ, radiusChunks);
@@ -149,4 +162,62 @@ public class World {
 
     public void update(float tpf) {
     }
+
+    public BlockType getBlockType(int x, int y, int z) {
+        if (y < 0 || y >= Chunk.SIZE_Y) {
+            return BlockType.AIR;
+        }
+
+        Chunk chunk = getChunkByWorldCoords(x, z);
+        if (chunk == null) {
+            return BlockType.AIR;
+        }
+
+        int localX = Math.floorMod(x, Chunk.SIZE_X);
+        int localZ = Math.floorMod(z, Chunk.SIZE_Z);
+
+        BlockType type = chunk.getBlock(localX, y, localZ);
+        return (type != null) ? type : BlockType.AIR;
+    }
+
+    public void setBlockType(int x, int y, int z, BlockType type) {
+        if (y < 0 || y >= Chunk.SIZE_Y) {
+            return;
+        }
+
+        Chunk chunk = getChunkByWorldCoords(x, z);
+        if (chunk == null) {
+            return;
+        }
+
+        int localX = Math.floorMod(x, Chunk.SIZE_X);
+        int localZ = Math.floorMod(z, Chunk.SIZE_Z);
+
+        chunk.setBlock(localX, y, localZ, type);
+
+        updateChunkAt(x, y, z);
+    }
+
+    public void updateChunkAt(int x, int y, int z) {
+        Chunk chunk = getChunkByWorldCoords(x, z);
+        if (chunk == null) {
+            return;
+        }
+
+        RigidBodyControl oldBody = chunk.getTerrainBody();
+        if (oldBody != null) {
+            physicsSpace.remove(oldBody);
+            chunk.getNode().removeControl(oldBody);
+        }
+
+        chunk.getNode().detachAllChildren();
+        chunk.buildGeometry(rootNode, cubeMesh, materials);
+
+        CollisionShape shape = CollisionShapeFactory.createMeshShape(chunk.getNode());
+        RigidBodyControl terrainBody = new RigidBodyControl(shape, 0);
+        chunk.getNode().addControl(terrainBody);
+        physicsSpace.add(terrainBody);
+        chunk.setTerrainBody(terrainBody);
+    }
+
 }

@@ -1,6 +1,8 @@
 package com.alextoday.game;
 
 import com.alextoday.game.world.World;
+import com.alextoday.game.world.BlockType;
+
 import com.jme3.app.SimpleApplication;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.BoxCollisionShape;
@@ -15,6 +17,11 @@ import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.system.AppSettings;
+import com.jme3.input.MouseInput;
+import com.jme3.input.controls.MouseButtonTrigger;
+import com.jme3.math.FastMath;
+import com.jme3.font.BitmapText;
+
 
 public class Main extends SimpleApplication implements ActionListener {
 
@@ -49,6 +56,24 @@ public class Main extends SimpleApplication implements ActionListener {
         initWorld();
         initPlayer();
         initKeys();
+        initCrosshair();
+
+    }
+
+    private void initCrosshair() {
+        guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
+
+        BitmapText cross = new BitmapText(guiFont, false);
+        cross.setSize(guiFont.getCharSet().getRenderedSize() * 2);
+        cross.setText("+");
+        cross.setColor(ColorRGBA.White);
+
+        float x = settings.getWidth() / 2f - cross.getLineWidth() / 2f;
+        float y = settings.getHeight() / 2f + cross.getLineHeight() / 2f;
+
+        cross.setLocalTranslation(x, y, 0);
+
+        guiNode.attachChild(cross);
     }
 
     @Override
@@ -132,7 +157,13 @@ public class Main extends SimpleApplication implements ActionListener {
         inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_A));
         inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
         inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
-        inputManager.addListener(this, "Forward", "Backward", "Left", "Right", "Jump");
+
+        inputManager.addMapping("BreakBlock", new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("PlaceBlock", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+
+        inputManager.addListener(this,
+                "Forward", "Backward", "Left", "Right", "Jump",
+                "BreakBlock", "PlaceBlock");
     }
 
     @Override
@@ -147,6 +178,102 @@ public class Main extends SimpleApplication implements ActionListener {
             right = isPressed;
         } else if ("Jump".equals(name) && isPressed) {
             player.jump();
+        } else if ("BreakBlock".equals(name) && isPressed) {
+            handleBreakBlock();
+        } else if ("PlaceBlock".equals(name) && isPressed) {
+            handlePlaceBlock();
         }
     }
+
+    private static class BlockRaycastResult {
+        boolean hit;
+        int hitX, hitY, hitZ;
+        int placeX, placeY, placeZ;
+        float distance;
+    }
+
+    private BlockRaycastResult raycastBlock(float maxDistance) {
+        BlockRaycastResult result = new BlockRaycastResult();
+
+        Vector3f origin = cam.getLocation().clone();
+        Vector3f dir = cam.getDirection().normalize();
+
+        float step = 0.1f;
+        float dist = 0f;
+
+        int lastAirX = 0, lastAirY = 0, lastAirZ = 0;
+        boolean hasLastAir = false;
+
+        while (dist <= maxDistance) {
+            Vector3f p = origin.add(dir.mult(dist));
+
+            int bx = (int) Math.floor(p.x);
+            int by = (int) Math.floor(p.y);
+            int bz = (int) Math.floor(p.z);
+
+            BlockType type = world.getBlockType(bx, by, bz);
+
+            if (type != null && type != BlockType.AIR) {
+                result.hit = true;
+                result.hitX = bx;
+                result.hitY = by;
+                result.hitZ = bz;
+
+                if (hasLastAir) {
+                    result.placeX = lastAirX;
+                    result.placeY = lastAirY;
+                    result.placeZ = lastAirZ;
+                } else {
+                    result.placeX = bx;
+                    result.placeY = by;
+                    result.placeZ = bz;
+                }
+
+                result.distance = dist;
+                return result;
+            } else {
+                hasLastAir = true;
+                lastAirX = bx;
+                lastAirY = by;
+                lastAirZ = bz;
+            }
+
+            dist += step;
+        }
+
+        return result;
+    }
+
+    private BlockType selectedBlockType = BlockType.DIRT;
+
+    private void handleBreakBlock() {
+        BlockRaycastResult hit = raycastBlock(6f);
+        if (!hit.hit) return;
+
+        world.setBlockType(hit.hitX, hit.hitY, hit.hitZ, BlockType.AIR);
+        world.updateChunkAt(hit.hitX, hit.hitY, hit.hitZ);
+    }
+
+    private void handlePlaceBlock() {
+        BlockRaycastResult hit = raycastBlock(6f);
+        if (!hit.hit) return;
+
+        BlockType existing = world.getBlockType(hit.placeX, hit.placeY, hit.placeZ);
+        if (existing != null && existing != BlockType.AIR) return;
+
+        Vector3f playerPos = player.getPhysicsLocation();
+
+        float px = playerPos.x;
+        float py = playerPos.y;
+        float pz = playerPos.z;
+
+        if (hit.placeX >= px - 0.5f && hit.placeX <= px + 0.5f &&
+                hit.placeY >= py && hit.placeY <= py + 1.8f &&
+                hit.placeZ >= pz - 0.5f && hit.placeZ <= pz + 0.5f) {
+            return;
+        }
+        world.setBlockType(hit.placeX, hit.placeY, hit.placeZ, selectedBlockType);
+        world.updateChunkAt(hit.placeX, hit.placeY, hit.placeZ);
+    }
+
 }
