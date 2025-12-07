@@ -6,7 +6,8 @@ public enum BlockType {
     AIR(false, null),
     GRASS(true, new ColorRGBA(0.3f, 0.8f, 0.3f, 1f)),
     DIRT(true, new ColorRGBA(0.59f, 0.29f, 0.0f, 1f)),
-    STONE(true, ColorRGBA.Gray);
+    STONE(true, ColorRGBA.Gray),
+    WATER(false, new ColorRGBA(0.2f, 0.4f, 1f, 0.7f));
 
     private final boolean solid;
     public final ColorRGBA color;

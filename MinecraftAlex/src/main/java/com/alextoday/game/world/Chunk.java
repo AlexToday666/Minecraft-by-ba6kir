@@ -66,6 +66,9 @@ public class Chunk {
     public void generateTerrainWithNoise(PerlinNoise noise,
                                          int baseHeight,
                                          int amplitude) {
+
+        int waterSurfaceY = 6;
+
         for (int x = 0; x < SIZE_X; x++) {
             for (int z = 0; z < SIZE_Z; z++) {
 
@@ -73,7 +76,7 @@ public class Chunk {
                 int worldZ = chunkZ * SIZE_Z + z;
 
                 double scale = 0.05;
-                double n = noise.noise(worldX * scale, worldZ * scale); // [-1, 1]
+                double n = noise.noise(worldX * scale, worldZ * scale);
 
                 int height = (int) Math.round(baseHeight + n * amplitude);
 
@@ -87,6 +90,14 @@ public class Chunk {
                         setBlock(x, y, z, BlockType.DIRT);
                     } else {
                         setBlock(x, y, z, BlockType.STONE);
+                    }
+                }
+
+                int topGroundY = height - 1;
+                if (topGroundY <= waterSurfaceY) {
+                    int maxWaterY = Math.min(waterSurfaceY, SIZE_Y - 1);
+                    for (int y = height; y <= maxWaterY; y++) {
+                        setBlock(x, y, z, BlockType.WATER);
                     }
                 }
             }
@@ -107,9 +118,14 @@ public class Chunk {
                 for (int z = 0; z < SIZE_Z; z++) {
 
                     BlockType type = blocks[x][y][z];
-                    if (type == null || !type.isSolid()) {
+                    if (type == null) {
                         continue;
                     }
+
+                    if (!type.isSolid() && type != BlockType.WATER) {
+                        continue;
+                    }
+
 
                     Material mat = materials.get(type);
                     if (mat == null) {

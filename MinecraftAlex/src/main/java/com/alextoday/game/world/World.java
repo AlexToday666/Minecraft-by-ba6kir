@@ -44,7 +44,7 @@ public class World {
 
     private void initMaterials() {
         for (BlockType type : BlockType.values()) {
-            if (!type.isSolid()) {
+            if (type.color == null) {
                 continue;
             }
 
@@ -112,7 +112,7 @@ public class World {
 
                 Chunk chunk = new Chunk(cx, cz);
 
-                chunk.generateTerrainWithNoise(heightNoise, 4, 2);
+                chunk.generateTerrainWithNoise(heightNoise, 8, 6);
 
                 chunk.buildGeometry(rootNode, cubeMesh, materials);
 
@@ -143,7 +143,6 @@ public class World {
             int dz = Math.abs(cz - centerCz);
 
             if (dx > radiusChunks || dz > radiusChunks) {
-                // снимаем физику
                 RigidBodyControl body = chunk.getTerrainBody();
                 if (body != null) {
                     physicsSpace.remove(body);

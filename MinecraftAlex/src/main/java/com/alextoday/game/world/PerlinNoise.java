@@ -35,7 +35,7 @@ public class PerlinNoise {
     }
 
     private static double grad(int hash, double x, double y) {
-        int h = hash & 3; // 4 варианта направления
+        int h = hash & 3;
         double u = (h < 2) ? x : y;
         double v = (h < 2) ? y : x;
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);

@@ -21,6 +21,13 @@ import com.jme3.input.MouseInput;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.math.FastMath;
 import com.jme3.font.BitmapText;
+import com.jme3.material.Material;
+import com.jme3.material.RenderState;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Spatial;
+import com.jme3.scene.shape.Box;
+
 
 
 public class Main extends SimpleApplication implements ActionListener {
@@ -29,6 +36,7 @@ public class Main extends SimpleApplication implements ActionListener {
     private BulletAppState bulletAppState;
     private CharacterControl player;
     private final Vector3f walkDirection = new Vector3f();
+    private Geometry highlightGeom;
     private boolean forward;
     private boolean backward;
     private boolean left;
@@ -41,7 +49,7 @@ public class Main extends SimpleApplication implements ActionListener {
     public static void main(String[] args) {
         Main app = new Main();
         AppSettings settings = new AppSettings(true);
-        settings.setResolution(1280, 720);
+        settings.setResolution(1920, 1080);
         settings.setTitle("MinecraftAlex");
         app.setSettings(settings);
         app.setShowSettings(false);
@@ -57,7 +65,7 @@ public class Main extends SimpleApplication implements ActionListener {
         initPlayer();
         initKeys();
         initCrosshair();
-
+        initBlockHighlight();
     }
 
     private void initCrosshair() {
@@ -74,6 +82,20 @@ public class Main extends SimpleApplication implements ActionListener {
         cross.setLocalTranslation(x, y, 0);
 
         guiNode.attachChild(cross);
+    }
+    private void initBlockHighlight(){
+        Box box = new Box(0.5f, 0.5f, 0.5f);
+        highlightGeom = new Geometry("blockHighlight", box);
+
+        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", new ColorRGBA(1f, 1f, 1f, 0.3f));
+        mat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        highlightGeom.setMaterial(mat);
+        highlightGeom.setQueueBucket(RenderQueue.Bucket.Transparent);
+        highlightGeom.setCullHint(Spatial.CullHint.Always);
+
+        rootNode.attachChild(highlightGeom);
     }
 
     @Override
@@ -100,6 +122,18 @@ public class Main extends SimpleApplication implements ActionListener {
 
         Vector3f pos = player.getPhysicsLocation();
         world.updateVisibleChunks(pos.x, pos.z, VIEW_RADIUS_CHUNKS);
+
+        updateBlockHighlight();
+    }
+
+    private void updateBlockHighlight(){
+        BlockRaycastResult hit = raycastBlock(6f);
+        if (hit.hit){
+            highlightGeom.setLocalTranslation(hit.hitX, hit.hitY, hit.hitZ);
+            highlightGeom.setCullHint(Spatial.CullHint.Never);
+        } else {
+            highlightGeom.setCullHint(Spatial.CullHint.Always);
+        }
     }
 
     private void initPhysics() {
@@ -127,21 +161,21 @@ public class Main extends SimpleApplication implements ActionListener {
     private void initWorld() {
         world = new World(rootNode, assetManager, bulletAppState.getPhysicsSpace());
 
-        BoxCollisionShape groundShape =
-                new BoxCollisionShape(new Vector3f(GROUND_HALF_SIZE, GROUND_HEIGHT / 2f, GROUND_HALF_SIZE));
-        RigidBodyControl ground = new RigidBodyControl(groundShape, 0);
-        ground.setPhysicsLocation(new Vector3f(0, GROUND_HEIGHT / 2f, 0));
-        bulletAppState.getPhysicsSpace().add(ground);
+//        BoxCollisionShape groundShape =
+//                new BoxCollisionShape(new Vector3f(GROUND_HALF_SIZE, GROUND_HEIGHT / 2f, GROUND_HALF_SIZE));
+//        RigidBodyControl ground = new RigidBodyControl(groundShape, 0);
+//        ground.setPhysicsLocation(new Vector3f(0, GROUND_HEIGHT / 2f, 0));
+//        bulletAppState.getPhysicsSpace().add(ground);
 
         world.updateVisibleChunks(0f, 0f, VIEW_RADIUS_CHUNKS);
     }
 
     private void initPlayer() {
         CapsuleCollisionShape capsule = new CapsuleCollisionShape(0.5f, 1.8f, 1);
-        player = new CharacterControl(capsule, 0.1f);
-        player.setJumpSpeed(20f);
-        player.setFallSpeed(30f);
-        player.setGravity(30f);
+        player = new CharacterControl(capsule, 0.2f);
+        player.setJumpSpeed(18f);
+        player.setFallSpeed(40f);
+        player.setGravity(40f);
 
         int terrainY = world.getTerrainHeightAt(0f, 0f);
 
@@ -177,7 +211,9 @@ public class Main extends SimpleApplication implements ActionListener {
         } else if ("Right".equals(name)) {
             right = isPressed;
         } else if ("Jump".equals(name) && isPressed) {
-            player.jump();
+            if (player.onGround()) {
+                player.jump();
+            }
         } else if ("BreakBlock".equals(name) && isPressed) {
             handleBreakBlock();
         } else if ("PlaceBlock".equals(name) && isPressed) {
@@ -207,9 +243,9 @@ public class Main extends SimpleApplication implements ActionListener {
         while (dist <= maxDistance) {
             Vector3f p = origin.add(dir.mult(dist));
 
-            int bx = (int) Math.floor(p.x);
-            int by = (int) Math.floor(p.y);
-            int bz = (int) Math.floor(p.z);
+            int bx = Math.round(p.x);
+            int by = Math.round(p.y);
+            int bz = Math.round(p.z);
 
             BlockType type = world.getBlockType(bx, by, bz);
 
@@ -251,7 +287,6 @@ public class Main extends SimpleApplication implements ActionListener {
         if (!hit.hit) return;
 
         world.setBlockType(hit.hitX, hit.hitY, hit.hitZ, BlockType.AIR);
-        world.updateChunkAt(hit.hitX, hit.hitY, hit.hitZ);
     }
 
     private void handlePlaceBlock() {
@@ -273,7 +308,6 @@ public class Main extends SimpleApplication implements ActionListener {
             return;
         }
         world.setBlockType(hit.placeX, hit.placeY, hit.placeZ, selectedBlockType);
-        world.updateChunkAt(hit.placeX, hit.placeY, hit.placeZ);
     }
 
 }
